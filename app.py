@@ -27,16 +27,18 @@ create_tables()
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
 
+if "demo_mode" not in st.session_state:
+    st.session_state.demo_mode = False
+
 st.title("⚡ Smart Electricity Analytics")
 
 # -----------------------
 # If NOT Logged In
 # -----------------------
-if st.session_state.user_id is None:
+if st.session_state.user_id is None and not st.session_state.demo_mode:
 
     st.markdown("## Welcome to Smart Electricity Analytics")
     st.caption("AI-powered electricity usage forecasting & bill optimization")
-    st.write("Login or create an account to continue.")
 
     st.markdown(
         """
@@ -47,6 +49,13 @@ if st.session_state.user_id is None:
         - 🔎 Understand seasonal patterns  
         """
     )
+
+    st.markdown("### Explore Without Login")   
+    if st.button("🚀 Try Demo Mode"):
+        st.session_state.demo_mode = True
+        st.rerun()
+
+    st.write("Login or create an account to continue.")
 
     tab_login, tab_signup = st.tabs(["Login", "Get Started"])
 
@@ -197,20 +206,57 @@ else:
             st.session_state.user_id = None
             st.rerun()
 
+        if st.session_state.demo_mode:
+            st.markdown("---")
+            if st.button("Exit Demo Mode"):
+                st.session_state.demo_mode = False
+                st.rerun()
+
 
     st.markdown("### 📂 Stored Bills")
 
-    rows = get_all_bills(st.session_state.user_id)
-    if rows:
-        bills_df = pd.DataFrame(rows, columns=[
-            "month", "year",
-            "units",
-            "energy",
-            "fixed",
-            "ed",
-            "total"
-        ])
-        bills_df["month_year"] = bills_df["month"].astype(str) + "/" + bills_df["year"].astype(str)
+    if st.session_state.demo_mode:
+        bills_df = pd.DataFrame({
+            "month": list(range(1, 13)),
+            "year": [2024] * 12,
+            "units": [239.2, 221.35, 229.94, 310.65, 370.21, 388.14, 370.59, 439.54, 324.66, 319.51, 234.6, 213.05],
+            "energy": [0]*12,
+            "fixed": [0]*12,
+            "ed": [0]*12,
+            "total": [2352.21, 2239.75, 2293.87, 2807.94, 3214.44, 3336.81, 3217.03, 3687.61, 2903.55, 2868.41, 2323.23, 2187.47]
+        })
+    else:
+        rows = get_all_bills(st.session_state.user_id)
+        if rows:
+            bills_df = pd.DataFrame(rows, columns=[
+                "month", "year",
+                "units",
+                "energy",
+                "fixed",
+                "ed",
+                "total"
+            ])
+        else:
+            bills_df = pd.DataFrame()
+    
+    if not bills_df.empty:
+
+        bills_df["month"] = bills_df["month"].astype(int)
+        bills_df["year"] = bills_df["year"].astype(int)
+
+        bills_df["date"] = pd.to_datetime(
+            dict(
+                year=bills_df["year"],
+                month=bills_df["month"],
+                day=1
+            )
+        )
+
+        bills_df["month_year"] = (
+            bills_df["month"].astype(str) + "/" +
+            bills_df["year"].astype(str)
+        )
+
         st.dataframe(bills_df[["month_year", "units", "total"]])
     else:
         st.info("No bills uploaded yet.")
@@ -279,8 +325,8 @@ else:
     # 📊 Historical Data Section
     # -----------------------
 
-    if rows:
-        df = pd.DataFrame(rows, columns=[
+    if not bills_df.empty:
+        df = pd.DataFrame(bills_df, columns=[
             "month", "year",
             "units",
             "energy",
@@ -290,8 +336,11 @@ else:
         ])
 
         df["date"] = pd.to_datetime(
-            df["year"].astype(str) + "-" +
-            df["month"].astype(str) + "-01"
+            dict(
+                year=df["year"].astype(int),
+                month=df["month"].astype(int),
+                day=1
+            )
         )
 
         df = df.sort_values("date")
@@ -379,18 +428,12 @@ else:
         # -----------------------
         # 💰 Forecast Bill Amount
         # -----------------------
-        user_slabs = get_slabs(st.session_state.user_id)
-        user_settings = get_billing_settings(st.session_state.user_id)
         forecast_totals = []
 
-        if user_slabs and user_settings:
+        if slabs:
 
-            slab_list = [
-                {"min": s[0], "max": s[1], "rate": s[2]}
-                for s in user_slabs
-            ]
-
-            fixed_charge, sanctioned_load, surcharge_percent = user_settings
+            slab_list = slabs
+            surcharge_percent = surcharge
 
             for units in future_predictions:
                 total_amount = calculate_bill(
@@ -404,11 +447,13 @@ else:
 
             forecast_df["predicted_total"] = forecast_totals
         
+        if st.session_state.demo_mode:
+            st.info("🚀 Demo Mode Active — Using simulated electricity data.")
 
         st.markdown("---")
         st.markdown("## Dashboard Summary")
 
-        if rows and future_predictions and len(df_model) >= 6:
+        if not bills_df.empty and future_predictions and len(df_model) >= 6:
 
             col1, col2, col3 = st.columns(3)
 
@@ -469,7 +514,7 @@ else:
         else:
             st.info("Upload sufficient historical data to activate full dashboard analytics.")
 
-        if rows and future_predictions and len(df_model) >= 6:
+        if not bills_df.empty and future_predictions and len(df_model) >= 6:
             st.markdown("### 🤖 AI Summary")
 
             summary_text = (
