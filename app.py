@@ -213,53 +213,57 @@ else:
                 st.rerun()
 
 
-    st.markdown("### 📂 Stored Bills")
+    with st.expander("📂 Stored Bills", expanded=False):
 
-    if st.session_state.demo_mode:
-        bills_df = pd.DataFrame({
-            "month": list(range(1, 13)),
-            "year": [2024] * 12,
-            "units": [239.2, 221.35, 229.94, 310.65, 370.21, 388.14, 370.59, 439.54, 324.66, 319.51, 234.6, 213.05],
-            "energy": [0]*12,
-            "fixed": [0]*12,
-            "ed": [0]*12,
-            "total": [2352.21, 2239.75, 2293.87, 2807.94, 3214.44, 3336.81, 3217.03, 3687.61, 2903.55, 2868.41, 2323.23, 2187.47]
-        })
-    else:
-        rows = get_all_bills(st.session_state.user_id)
-        if rows:
-            bills_df = pd.DataFrame(rows, columns=[
-                "month", "year",
-                "units",
-                "energy",
-                "fixed",
-                "ed",
-                "total"
-            ])
+        if st.session_state.demo_mode:
+            bills_df = pd.DataFrame({
+                "month": list(range(1, 13)),
+                "year": [2024] * 12,
+                "units": [239.2, 221.35, 229.94, 310.65, 370.21, 388.14, 370.59, 439.54, 324.66, 319.51, 234.6, 213.05],
+                "energy": [0]*12,
+                "fixed": [0]*12,
+                "ed": [0]*12,
+                "total": [2352.21, 2239.75, 2293.87, 2807.94, 3214.44, 3336.81, 3217.03, 3687.61, 2903.55, 2868.41, 2323.23, 2187.47]
+            })
         else:
-            bills_df = pd.DataFrame()
-    
-    if not bills_df.empty:
+            rows = get_all_bills(st.session_state.user_id)
+            if rows:
+                bills_df = pd.DataFrame(rows, columns=[
+                    "month", "year",
+                    "units",
+                    "energy",
+                    "fixed",
+                    "ed",
+                    "total"
+                ])
+            else:
+                bills_df = pd.DataFrame()
 
-        bills_df["month"] = bills_df["month"].astype(int)
-        bills_df["year"] = bills_df["year"].astype(int)
+        if not bills_df.empty:
 
-        bills_df["date"] = pd.to_datetime(
-            dict(
-                year=bills_df["year"],
-                month=bills_df["month"],
-                day=1
+            bills_df["month"] = bills_df["month"].astype(int)
+            bills_df["year"] = bills_df["year"].astype(int)
+
+            bills_df["date"] = pd.to_datetime(
+                dict(
+                    year=bills_df["year"],
+                    month=bills_df["month"],
+                    day=1
+                )
             )
-        )
 
-        bills_df["month_year"] = (
-            bills_df["month"].astype(str) + "/" +
-            bills_df["year"].astype(str)
-        )
+            bills_df["month_year"] = (
+                bills_df["month"].astype(str) + "/" +
+                bills_df["year"].astype(str)
+            )
 
-        st.dataframe(bills_df[["month_year", "units", "total"]])
-    else:
-        st.info("No bills uploaded yet.")
+            st.dataframe(
+                bills_df[["month_year", "units", "total"]],
+                use_container_width=True
+            )
+
+        else:
+            st.info("No bills uploaded yet.")
 
     if "uploader_version" not in st.session_state:
         st.session_state.uploader_version = 0
