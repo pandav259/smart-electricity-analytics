@@ -729,3 +729,13 @@ else:
 
     else:
         st.info("No bills uploaded yet.")
+
+st.markdown("---")
+st.markdown("""
+<div style="text-align:center; font-size:15px; font-weight:600;
+background: linear-gradient(90deg, #ff7eb3, #65d6ff);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;">
+    Made with 🩵 by Ashmi Verma
+</div>
+""", unsafe_allow_html=True)
